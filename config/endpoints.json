@@ -1,0 +1,15 @@
+{
+  "defaultEndpointId": "official-openai",
+  "endpoints": [
+    {
+      "id": "official-openai",
+      "name": "OpenAI Official",
+      "baseUrl": "https://api.openai.com/v1",
+      "declaredModel": "gpt-4o",
+      "providerTag": "openai",
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "passthroughAuth": false,
+      "enabled": true
+    }
+  ]
+}

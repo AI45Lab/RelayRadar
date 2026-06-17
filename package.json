@@ -1,0 +1,21 @@
+{
+  "name": "relayradar",
+  "private": true,
+  "version": "0.1.0",
+  "license": "BUSL-1.1",
+  "description": "RelayRadar: OpenAI-compatible API observability and protection platform",
+  "packageManager": "pnpm@10.29.2",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:proxy": "pnpm --filter @relayradar/proxy dev",
+    "dev:console": "pnpm --filter @relayradar/console dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

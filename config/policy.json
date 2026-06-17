@@ -1,0 +1,28 @@
+{
+  "requiredRedactionFields": [
+    "email",
+    "phone",
+    "api_key",
+    "bearer_token",
+    "token",
+    "id_number"
+  ],
+  "manualRedactionStrings": [],
+  "manualRedactionRegexes": [],
+  "disallowRelaySessionTags": [
+    "prod_sensitive"
+  ],
+  "blockOnHighRiskResponse": true,
+  "privacyFilterEnabled": false,
+  "privacyFilterThreshold": 0.85,
+  "sentinelEnabled": true,
+  "sentinelIntervalMinutes": 30,
+  "sentinelPromptsPerCycle": 3,
+  "canaryEnabled": false,
+  "promptPerturbationEnabled": false,
+  "minimalExposureEnabled": true,
+  "fingerprintPortraitWindowHours": 24,
+  "fingerprintAuditEnabled": true,
+  "fingerprintAuditDriftThreshold": 0.72,
+  "fingerprintAuditCooldownMinutes": 5
+}
