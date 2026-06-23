@@ -98,6 +98,7 @@ export function FingerprintCatalogPage() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [settingsByCardId, setSettingsByCardId] = useState<Record<string, RunSettings>>({});
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [modelDiscovery, setModelDiscovery] = useState<ModelDiscoverySettings>(defaultModelDiscoverySettings());
   const [discoveredModels, setDiscoveredModels] = useState<ListedModel[]>([]);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
@@ -266,6 +267,7 @@ export function FingerprintCatalogPage() {
       setSelectedCardId(saved.id);
       await models.refresh();
       resetDraft();
+      setComposerOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -286,6 +288,7 @@ export function FingerprintCatalogPage() {
     });
     setError(null);
     setSuccess(null);
+    setComposerOpen(true);
   }
 
   async function deleteCard(cardId: string): Promise<void> {
@@ -423,49 +426,101 @@ export function FingerprintCatalogPage() {
     }
   }
 
+  const selectedProvider = selectedCard?.providerTag || "Provider unset";
+  const composerVisible = composerOpen || editingCardId !== null;
+
   return (
     <section>
       <div className="section-header">
-        <h2>Fingerprint Lab</h2>
-        <Link to="/" className="btn ghost">Overview</Link>
+        <div>
+          <h2>Fingerprint Lab</h2>
+          <p className="muted">Model identity, baseline sampling, and fingerprint evidence in one workspace.</p>
+        </div>
+        <div className="row-actions">
+          <Link to="/" className="btn ghost">Monitor</Link>
+        </div>
       </div>
 
       {error ? <p className="error">{error}</p> : null}
       {success ? <p className="feedback-success">{success}</p> : null}
 
-      <div className="fingerprint-lab-layout">
+      <dl className="overview-metric-row fingerprint-lab-metrics">
+        <div>
+          <dt>Model cards</dt>
+          <dd>{displayCards.length}</dd>
+        </div>
+        <div>
+          <dt>Baselines</dt>
+          <dd>{(baselines.data ?? []).length}</dd>
+        </div>
+        <div>
+          <dt>Selected model</dt>
+          <dd title={selectedCard?.label ?? "No model selected"}>{selectedCard?.label ?? "None"}</dd>
+        </div>
+        <div>
+          <dt>Record scope</dt>
+          <dd>{selectedCard ? `${scopedBaselines.length} related` : "All records"}</dd>
+        </div>
+      </dl>
 
-        {/* ── Left sidebar ── */}
-        <div className="fingerprint-lab-sidebar">
-
-          {/* Model card list */}
-          <article className="card endpoint-form-card">
-            <h3>Model Cards</h3>
-            {models.loading ? <p className="muted small">Loading...</p> : null}
-            {models.error ? <p className="error">{models.error}</p> : null}
-            {(models.data ?? []).length === 0 && !models.loading ? (
-              <p className="muted small">No model cards yet. Add one below.</p>
-            ) : (
-              <>
-                <div className="model-list">
-                  {modelCardPagination.items.map((card) => (
-                    <div
-                      key={card.id}
-                      className={`model-list-item ${selectedCardId === card.id ? "active" : ""} ${card.synthetic ? "synthetic" : ""}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedCardId(card.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") setSelectedCardId(card.id);
-                      }}
-                    >
-                      <div className="model-list-item-name">
-                        {card.label}
-                        {card.synthetic ? <span className="synthetic-tag" title="Derived from an existing baseline — not a saved model card">auto</span> : null}
+      <div className="fingerprint-workbench">
+        <article className="lab-panel fingerprint-model-library">
+          <div className="lab-panel-head">
+            <div>
+              <h3>Model Library</h3>
+              <p className="muted small">Saved model cards and baselines discovered from prior runs.</p>
+            </div>
+            <div className="row-actions">
+              {models.loading ? <span className="muted small">Loading...</span> : null}
+              <button
+                type="button"
+                className="btn ghost small"
+                onClick={() => {
+                  resetDraft();
+                  setComposerOpen(true);
+                }}
+              >
+                New model
+              </button>
+            </div>
+          </div>
+          {models.error ? <p className="error">{models.error}</p> : null}
+          {displayCards.length === 0 && !models.loading ? (
+            <div className="empty-state compact">
+              <p>No model cards yet.</p>
+              <button type="button" className="btn" onClick={() => setComposerOpen(true)}>
+                Add model
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="model-list">
+                {modelCardPagination.items.map((card) => (
+                  <div
+                    key={card.id}
+                    className={`model-list-item ${selectedCardId === card.id ? "active" : ""} ${card.synthetic ? "synthetic" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedCardId(card.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") setSelectedCardId(card.id);
+                    }}
+                  >
+                    <div className="model-list-item-top">
+                      <div>
+                        <div className="model-list-item-name">
+                          {card.label}
+                          {card.synthetic ? (
+                            <span className="synthetic-tag" title="Derived from an existing baseline — not a saved model card">auto</span>
+                          ) : null}
+                        </div>
+                        <div className="model-list-item-sub">{card.model}</div>
                       </div>
-                      <div className="model-list-item-sub">{card.model}</div>
-                      <div className="model-list-item-footer">
-                        <span className="small muted">{card.providerTag || "—"}</span>
+                      <span className="provider-chip">{card.providerTag || "custom"}</span>
+                    </div>
+                    <div className="model-list-item-footer">
+                      <span className="small muted">{card.modelFamily || "No family set"}</span>
+                      {selectedCardId === card.id ? (
                         <div className="row-actions">
                           {card.synthetic ? (
                             <button
@@ -474,7 +529,7 @@ export function FingerprintCatalogPage() {
                               title="Save as an editable model card"
                               onClick={(event) => { event.stopPropagation(); void promoteSyntheticCard(card); }}
                             >
-                              Save Card
+                              Save
                             </button>
                           ) : (
                             <>
@@ -495,241 +550,268 @@ export function FingerprintCatalogPage() {
                             </>
                           )}
                         </div>
-                      </div>
+                      ) : null}
                     </div>
-                  ))}
-                </div>
-                {modelCardPagination.pageCount > 1 ? (
-                  <PaginationControls
-                    page={modelCardPagination.page}
-                    pageCount={modelCardPagination.pageCount}
-                    total={modelCardPagination.total}
-                    startIndex={modelCardPagination.startIndex}
-                    endIndex={modelCardPagination.endIndex}
-                    onPageChange={modelCardPagination.setPage}
-                  />
-                ) : null}
-              </>
-            )}
-          </article>
+                  </div>
+                ))}
+              </div>
+              {modelCardPagination.pageCount > 1 ? (
+                <PaginationControls
+                  page={modelCardPagination.page}
+                  pageCount={modelCardPagination.pageCount}
+                  total={modelCardPagination.total}
+                  startIndex={modelCardPagination.startIndex}
+                  endIndex={modelCardPagination.endIndex}
+                  onPageChange={modelCardPagination.setPage}
+                />
+              ) : null}
+            </>
+          )}
+        </article>
 
-          {/* Add / Edit model form */}
-          <article className="card endpoint-form-card">
-            <h3>{editingCardId ? "Edit Model" : "Add Model"}</h3>
-            <form className="endpoint-form" onSubmit={(event) => void upsertCard(event)}>
-              <div className="model-discovery-panel">
-                <div className="model-discovery-header">
-                  <span>Discover Models</span>
-                  <button
-                    className="btn ghost small"
-                    type="button"
-                    onClick={() => void loadDiscoveredModels()}
-                    disabled={discoveryLoading}
-                  >
-                    {discoveryLoading ? "Loading..." : "List Models"}
-                  </button>
+        <div className="fingerprint-workspace-stack">
+          {composerVisible ? (
+            <article className="lab-panel fingerprint-edit-panel">
+              <div className="lab-panel-head">
+                <div>
+                  <h3>{editingCardId ? "Edit Model" : "Add Model"}</h3>
+                  <p className="muted small">Discover provider models, then save the profile used by baseline runs.</p>
                 </div>
-                <label>
-                  <span>Base URL</span>
-                  <input
-                    value={modelDiscovery.baseUrl}
-                    onChange={(event) => setModelDiscovery((prev) => ({ ...prev, baseUrl: event.target.value }))}
-                    placeholder="https://api.openai.com/v1"
-                  />
-                </label>
-                <label>
-                  <span>API Key</span>
-                  <input
-                    type="password"
-                    value={modelDiscovery.apiKey}
-                    onChange={(event) => setModelDiscovery((prev) => ({ ...prev, apiKey: event.target.value }))}
-                    placeholder="sk-..."
-                  />
-                </label>
-                <label>
-                  <span>API Key Env</span>
-                  <input
-                    value={modelDiscovery.apiKeyEnv}
-                    onChange={(event) => setModelDiscovery((prev) => ({ ...prev, apiKeyEnv: event.target.value }))}
-                    placeholder="OPENAI_API_KEY"
-                  />
-                </label>
-                {discoveredModels.length > 0 ? (
-                  <label>
-                    <span>Choose Model</span>
-                    <select
-                      value={discoveredModels.some((item) => item.id === draft.model) ? draft.model : ""}
-                      onChange={(event) => chooseDiscoveredModel(event.target.value)}
+              </div>
+              <form className="endpoint-form fingerprint-model-form" onSubmit={(event) => void upsertCard(event)}>
+                <div className="model-discovery-panel">
+                  <div className="model-discovery-header">
+                    <span>Discover Models</span>
+                    <button
+                      className="btn ghost small"
+                      type="button"
+                      onClick={() => void loadDiscoveredModels()}
+                      disabled={discoveryLoading}
                     >
-                      <option value="">Select a listed model</option>
-                      {discoveredModels.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.id}
-                          {item.ownedBy ? ` · ${item.ownedBy}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                      {discoveryLoading ? "Loading..." : "List Models"}
+                    </button>
+                  </div>
+                  <div className="fingerprint-discovery-grid">
+                    <label>
+                      <span>Base URL</span>
+                      <input
+                        value={modelDiscovery.baseUrl}
+                        onChange={(event) => setModelDiscovery((prev) => ({ ...prev, baseUrl: event.target.value }))}
+                        placeholder="https://api.openai.com/v1"
+                      />
+                    </label>
+                    <label>
+                      <span>API Key</span>
+                      <input
+                        type="password"
+                        value={modelDiscovery.apiKey}
+                        onChange={(event) => setModelDiscovery((prev) => ({ ...prev, apiKey: event.target.value }))}
+                        placeholder="sk-..."
+                      />
+                    </label>
+                    <label>
+                      <span>API Key Env</span>
+                      <input
+                        value={modelDiscovery.apiKeyEnv}
+                        onChange={(event) => setModelDiscovery((prev) => ({ ...prev, apiKeyEnv: event.target.value }))}
+                        placeholder="OPENAI_API_KEY"
+                      />
+                    </label>
+                  </div>
+                  {discoveredModels.length > 0 ? (
+                    <label>
+                      <span>Choose Model</span>
+                      <select
+                        value={discoveredModels.some((item) => item.id === draft.model) ? draft.model : ""}
+                        onChange={(event) => chooseDiscoveredModel(event.target.value)}
+                      >
+                        <option value="">Select a listed model</option>
+                        {discoveredModels.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.id}
+                            {item.ownedBy ? ` · ${item.ownedBy}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {discoveryMessage ? <p className="small muted">{discoveryMessage}</p> : null}
+                </div>
+
+                <div className="fingerprint-form-grid">
+                  <label>
+                    <span>Label</span>
+                    <input
+                      value={draft.label}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, label: event.target.value }))}
+                      required
+                      placeholder="GPT-4o Production"
+                    />
                   </label>
-                ) : null}
-                {discoveryMessage ? <p className="small muted">{discoveryMessage}</p> : null}
-              </div>
-
-              <label>
-                <span>Label</span>
-                <input
-                  value={draft.label}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, label: event.target.value }))}
-                  required
-                  placeholder="GPT-4o Production"
-                />
-              </label>
-              <label>
-                <span>Model Name</span>
-                <input
-                  value={draft.model}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, model: event.target.value }))}
-                  required
-                  placeholder="gpt-4o"
-                />
-              </label>
-              <label>
-                <span>Provider</span>
-                <input
-                  value={draft.providerTag}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, providerTag: event.target.value }))}
-                  placeholder="openai"
-                />
-              </label>
-              <label>
-                <span>Model Family</span>
-                <input
-                  value={draft.modelFamily}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, modelFamily: event.target.value }))}
-                  placeholder="gpt-4o"
-                />
-              </label>
-              <label>
-                <span>Notes</span>
-                <input
-                  value={draft.notes}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, notes: event.target.value }))}
-                  placeholder="prod baseline lane"
-                />
-              </label>
-              <div className="row-actions">
-                <button className="btn" type="submit">
-                  {editingCardId ? "Update" : "Add"}
-                </button>
-                <button className="btn ghost" type="button" onClick={resetDraft}>
-                  {editingCardId ? "Cancel" : "Reset"}
-                </button>
-              </div>
-            </form>
-          </article>
-
-        </div>
-
-        {/* ── Right main ── */}
-        <div className="fingerprint-lab-main">
-          {selectedCard ? (
-            /* Run settings */
-            <article className="card endpoint-form-card">
-              <h3>Run Baseline</h3>
-              <p className="run-panel-meta">
-                {selectedCard.label} · <span className="mono">{selectedCard.model}</span>
-                {selectedCard.providerTag ? ` · ${selectedCard.providerTag}` : ""}
-              </p>
-              <form className="endpoint-form two-col" onSubmit={(event) => void runForSelectedCard(event)}>
-                <label>
-                  <span>Baseline Name</span>
-                  <input
-                    value={getCardSettings(selectedCard.id).baselineName}
-                    onChange={(event) =>
-                      updateCardSettings(selectedCard.id, (prev) => ({ ...prev, baselineName: event.target.value }))
-                    }
-                    placeholder={`${selectedCard.label} baseline`}
-                  />
-                </label>
-                <label>
-                  <span>Ref. Samples Per Prompt</span>
-                  <input
-                    type="number"
-                    min={8}
-                    max={200}
-                    value={getCardSettings(selectedCard.id).samplesPerPrompt}
-                    onChange={(event) =>
-                      updateCardSettings(selectedCard.id, (prev) => ({
-                        ...prev,
-                        samplesPerPrompt: Number.parseInt(event.target.value, 10) || 1
-                      }))
-                    }
-                  />
-                </label>
-                <label className="full-span">
-                  <span>Base URL</span>
-                  <input
-                    value={getCardSettings(selectedCard.id).baseUrl}
-                    onChange={(event) =>
-                      updateCardSettings(selectedCard.id, (prev) => ({ ...prev, baseUrl: event.target.value }))
-                    }
-                    required
-                  />
-                </label>
-                <label>
-                  <span>API Key</span>
-                  <input
-                    type="password"
-                    value={getCardSettings(selectedCard.id).apiKey}
-                    onChange={(event) =>
-                      updateCardSettings(selectedCard.id, (prev) => ({ ...prev, apiKey: event.target.value }))
-                    }
-                    placeholder="sk-..."
-                  />
-                </label>
-                <label>
-                  <span>API Key Env</span>
-                  <input
-                    value={getCardSettings(selectedCard.id).apiKeyEnv}
-                    onChange={(event) =>
-                      updateCardSettings(selectedCard.id, (prev) => ({ ...prev, apiKeyEnv: event.target.value }))
-                    }
-                    placeholder="OPENAI_API_KEY"
-                  />
-                </label>
-                <div className="row-actions full-span align-end">
-                  <button className="btn" type="submit" disabled={busyCardId === selectedCard.id}>
-                    {busyCardId === selectedCard.id ? "Running..." : "Run"}
+                  <label>
+                    <span>Model Name</span>
+                    <input
+                      value={draft.model}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, model: event.target.value }))}
+                      required
+                      placeholder="gpt-4o"
+                    />
+                  </label>
+                  <label>
+                    <span>Provider</span>
+                    <input
+                      value={draft.providerTag}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, providerTag: event.target.value }))}
+                      placeholder="openai"
+                    />
+                  </label>
+                  <label>
+                    <span>Model Family</span>
+                    <input
+                      value={draft.modelFamily}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, modelFamily: event.target.value }))}
+                      placeholder="gpt-4o"
+                    />
+                  </label>
+                  <label className="full-span">
+                    <span>Notes</span>
+                    <input
+                      value={draft.notes}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, notes: event.target.value }))}
+                      placeholder="prod baseline lane"
+                    />
+                  </label>
+                </div>
+                <div className="row-actions align-end">
+                  <button className="btn" type="submit">
+                    {editingCardId ? "Update model" : "Add model"}
+                  </button>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      resetDraft();
+                      setComposerOpen(false);
+                    }}
+                  >
+                    Cancel
                   </button>
                 </div>
               </form>
-
-              {busyCardId === selectedCard.id ? (
-                <div className="fingerprint-run-progress">
-                  <div className="fingerprint-run-progress-bar">
-                    <div className="fingerprint-run-progress-fill" style={{ width: `${progress}%` }} />
-                  </div>
-                  <div className="small muted fingerprint-run-progress-label">
-                    {progressLabel} · {progress}%
-                  </div>
-                </div>
-              ) : null}
             </article>
           ) : null}
 
-          {/* Baseline records — always visible */}
-          <article className="card table-wrap">
+          <article className="lab-panel fingerprint-run-panel">
+            {selectedCard ? (
+              <>
+                <div className="selected-model-strip">
+                  <div>
+                    <span className="section-kicker">Selected model</span>
+                    <h3>{selectedCard.label}</h3>
+                    <p className="mono small">{selectedCard.model}</p>
+                  </div>
+                  <div className="selected-model-meta">
+                    <span className="provider-chip">{selectedProvider}</span>
+                    <span className="small muted">{selectedCard.modelFamily || "No family set"}</span>
+                  </div>
+                </div>
+
+                <form className="endpoint-form two-col fingerprint-run-form" onSubmit={(event) => void runForSelectedCard(event)}>
+                  <label>
+                    <span>Baseline Name</span>
+                    <input
+                      value={getCardSettings(selectedCard.id).baselineName}
+                      onChange={(event) =>
+                        updateCardSettings(selectedCard.id, (prev) => ({ ...prev, baselineName: event.target.value }))
+                      }
+                      placeholder={`${selectedCard.label} baseline`}
+                    />
+                  </label>
+                  <label>
+                    <span>Ref. Samples Per Prompt</span>
+                    <input
+                      type="number"
+                      min={8}
+                      max={200}
+                      value={getCardSettings(selectedCard.id).samplesPerPrompt}
+                      onChange={(event) =>
+                        updateCardSettings(selectedCard.id, (prev) => ({
+                          ...prev,
+                          samplesPerPrompt: Number.parseInt(event.target.value, 10) || 1
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="full-span">
+                    <span>Base URL</span>
+                    <input
+                      value={getCardSettings(selectedCard.id).baseUrl}
+                      onChange={(event) =>
+                        updateCardSettings(selectedCard.id, (prev) => ({ ...prev, baseUrl: event.target.value }))
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>API Key</span>
+                    <input
+                      type="password"
+                      value={getCardSettings(selectedCard.id).apiKey}
+                      onChange={(event) =>
+                        updateCardSettings(selectedCard.id, (prev) => ({ ...prev, apiKey: event.target.value }))
+                      }
+                      placeholder="sk-..."
+                    />
+                  </label>
+                  <label>
+                    <span>API Key Env</span>
+                    <input
+                      value={getCardSettings(selectedCard.id).apiKeyEnv}
+                      onChange={(event) =>
+                        updateCardSettings(selectedCard.id, (prev) => ({ ...prev, apiKeyEnv: event.target.value }))
+                      }
+                      placeholder="OPENAI_API_KEY"
+                    />
+                  </label>
+                  <div className="row-actions full-span align-end">
+                    <button className="btn" type="submit" disabled={busyCardId === selectedCard.id}>
+                      {busyCardId === selectedCard.id ? "Running..." : "Run baseline"}
+                    </button>
+                  </div>
+                </form>
+
+                {busyCardId === selectedCard.id ? (
+                  <div className="fingerprint-run-progress">
+                    <div className="fingerprint-run-progress-bar">
+                      <div className="fingerprint-run-progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="small muted fingerprint-run-progress-label">
+                      {progressLabel} · {progress}%
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="empty-state compact fingerprint-run-empty">
+                <p>Select a model to configure and run a baseline.</p>
+              </div>
+            )}
+          </article>
+
+          <article className="lab-panel table-wrap fingerprint-records-panel">
             <div className="card-head">
-              <h3>Baseline Records</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div>
+                <h3>Baseline Records</h3>
+                <p className="muted small">
+                  {selectedCard ? `Showing records for ${selectedCard.label}.` : "Showing every captured baseline."}
+                </p>
+              </div>
+              <div className="baseline-record-actions">
                 {selectedCard ? (
                   <>
-                    <span className="small muted">Filtered: {selectedCard.label}</span>
-                    <button
-                      type="button"
-                      className="btn ghost small"
-                      onClick={() => setSelectedCardId(null)}
-                    >
-                      Show All
+                    <span className="baseline-filter-chip">{selectedCard.label}</span>
+                    <button type="button" className="btn ghost small" onClick={() => setSelectedCardId(null)}>
+                      Show all
                     </button>
                   </>
                 ) : baselines.loading ? (
@@ -753,7 +835,7 @@ export function FingerprintCatalogPage() {
                 {baselinePagination.total === 0 ? (
                   <tr>
                     <td colSpan={6} className="table-empty">
-                      {baselines.loading ? "Loading baselines..." : "No baselines yet. Select a model card and run the fingerprint sampler above."}
+                      {baselines.loading ? "Loading baselines..." : "No baselines yet. Select a model card and run the fingerprint sampler."}
                     </td>
                   </tr>
                 ) : (
@@ -792,9 +874,7 @@ export function FingerprintCatalogPage() {
               onPageChange={baselinePagination.setPage}
             />
           </article>
-
         </div>
-
       </div>
     </section>
   );

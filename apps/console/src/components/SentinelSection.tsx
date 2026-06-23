@@ -46,6 +46,7 @@ export function SentinelSection({ loading, error, data, runBusy, runFeedback, on
         </div>
         <div className="row-actions">
           <button type="button" className="btn ghost" onClick={onRefresh} disabled={loading || runBusy}>
+            <span className="btn-glyph" aria-hidden="true">↻</span>
             Refresh
           </button>
           <button type="button" className="btn" onClick={onRun} disabled={runBusy || data?.enabled === false}>

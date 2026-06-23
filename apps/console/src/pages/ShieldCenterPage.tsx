@@ -97,6 +97,7 @@ export function ShieldCenterPage() {
   const [canaryEnabled, setCanaryEnabled] = useState(false);
   const [minimalExposureEnabled, setMinimalExposureEnabled] = useState(true);
   const [promptPerturbationEnabled, setPromptPerturbationEnabled] = useState(false);
+  const [shieldView, setShieldView] = useState<"policy" | "activity" | "protected">("policy");
 
   useEffect(() => {
     if (!policy.data) {
@@ -299,11 +300,17 @@ export function ShieldCenterPage() {
   return (
     <section>
       <div className="section-header">
-        <h2>Shield Center</h2>
-        <button className="btn" onClick={() => void refresh()} disabled={loading}>Refresh</button>
+        <div>
+          <h2>Shield Center</h2>
+          <p className="muted small">Tune privacy controls, inspect protected data, and review response-blocking activity.</p>
+        </div>
+        <button className="btn ghost" onClick={() => void refresh()} disabled={loading}>
+          <span className="btn-glyph" aria-hidden="true">↻</span>
+          Refresh
+        </button>
       </div>
 
-      {loading ? <p>Loading shield metrics...</p> : null}
+      {loading ? <p className="loading-state">Loading shield metrics...</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {policy.error ? <p className="error">{policy.error}</p> : null}
       {saveMessage ? <p className={saveMessage.isError ? "error" : "muted"}>{saveMessage.text}</p> : null}
@@ -318,6 +325,13 @@ export function ShieldCenterPage() {
             <MetricCard title="Blocked Responses" value={data.summary.blockedResponses24h} />
           </div>
 
+          <div className="page-tabs" role="tablist" aria-label="Shield Center sections">
+            <button type="button" className={shieldView === "policy" ? "active" : ""} onClick={() => setShieldView("policy")}>Policy</button>
+            <button type="button" className={shieldView === "activity" ? "active" : ""} onClick={() => setShieldView("activity")}>Activity</button>
+            <button type="button" className={shieldView === "protected" ? "active" : ""} onClick={() => setShieldView("protected")}>Protected data</button>
+          </div>
+
+          {shieldView === "policy" ? (
           <article className="card shield-policy-card">
             <div className="shield-policy-header">
               <div>
@@ -430,7 +444,9 @@ export function ShieldCenterPage() {
               </div>
             </div>
           </article>
+          ) : null}
 
+          {shieldView === "activity" ? (
           <div className="grid-2 stretch shield-table-grid">
             <article className="card table-wrap">
               <div className="card-head"><h3>Top Sensitive Fields</h3></div>
@@ -492,9 +508,11 @@ export function ShieldCenterPage() {
               />
             </article>
           </div>
+          ) : null}
         </>
       ) : null}
 
+      {shieldView === "protected" ? (
       <article className="card flush manual-protected-card">
         <div className="card-head">
           <div>
@@ -642,6 +660,7 @@ export function ShieldCenterPage() {
           />
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

@@ -1,0 +1,21 @@
+node_modules
+.env
+.env.*
+dist
+coverage
+*.log
+*.bak
+.DS_Store
+**/.DS_Store
+/apps/proxy/data
+/apps/*/dist/
+/packages/*/dist/
+/data/*.sqlite-*
+
+# Local tool overrides (may contain endpoints, keys, or machine-specific paths)
+.claude/settings.local.json
+.claude/
+.vscode/
+scripts/*.personal.json
+scripts/*.local.json
+

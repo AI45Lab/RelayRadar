@@ -73,6 +73,9 @@ export function EndpointManagePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(defaultDraft());
   const [formOpen, setFormOpen] = useState(false);
+  const [endpointSearch, setEndpointSearch] = useState("");
+  const [endpointView, setEndpointView] = useState<"all" | "enabled" | "disabled">("all");
+  const [endpointSort, setEndpointSort] = useState<"default" | "name" | "recent" | "provider">("default");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<ListedModel[]>([]);
@@ -80,6 +83,31 @@ export function EndpointManagePage() {
   const [modelFetchMessage, setModelFetchMessage] = useState<string | null>(null);
 
   const orderedEndpoints = useMemo(() => data ?? [], [data]);
+  const endpointSummary = useMemo(
+    () => ({
+      total: orderedEndpoints.length,
+      enabled: orderedEndpoints.filter((item) => item.enabled).length,
+      disabled: orderedEndpoints.filter((item) => !item.enabled).length
+    }),
+    [orderedEndpoints]
+  );
+  const visibleEndpoints = useMemo(() => {
+    const query = endpointSearch.trim().toLowerCase();
+    const rows = orderedEndpoints.filter((item) => {
+      if (endpointView === "enabled" && !item.enabled) return false;
+      if (endpointView === "disabled" && item.enabled) return false;
+      if (!query) return true;
+      return [item.name, item.id, item.baseUrl, item.providerTag, item.declaredModel, item.apiKeyEnv]
+        .some((value) => (value ?? "").toLowerCase().includes(query));
+    });
+    return rows.sort((a, b) => {
+      if (endpointSort === "name") return a.name.localeCompare(b.name);
+      if (endpointSort === "provider") return a.providerTag.localeCompare(b.providerTag) || a.name.localeCompare(b.name);
+      if (endpointSort === "recent") return (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? "");
+      return Number(b.isDefault) - Number(a.isDefault) || Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name);
+    });
+  }, [endpointSearch, endpointSort, endpointView, orderedEndpoints]);
+  const hasActiveEndpointFilters = endpointSearch.trim().length > 0 || endpointView !== "all";
 
   const resetModelPicker = () => {
     setModelOptions([]);
@@ -185,7 +213,7 @@ export function EndpointManagePage() {
   };
 
   const onDelete = async (endpointId: string) => {
-    if (!window.confirm(`Delete endpoint '${endpointId}'?`)) return;
+    if (!window.confirm(`Delete route '${endpointId}'?`)) return;
 
     try {
       await deleteEndpoint(endpointId);
@@ -201,10 +229,16 @@ export function EndpointManagePage() {
   return (
     <section>
       <div className="section-header">
-        <h2>Endpoint Management</h2>
+        <div>
+          <h2>Routes</h2>
+          <p className="muted small">Configure upstream routes, credentials, baseline matching, and default traffic behavior.</p>
+        </div>
         <div className="row-actions">
-          <button className="btn ghost" onClick={startCreate}>+ New Endpoint</button>
-          <button className="btn ghost" onClick={() => void refresh()} disabled={loading}>Refresh</button>
+          <button className="btn" onClick={startCreate}>New Route</button>
+          <button className="btn ghost" onClick={() => void refresh()} disabled={loading}>
+            <span className="btn-glyph" aria-hidden="true">↻</span>
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -212,8 +246,19 @@ export function EndpointManagePage() {
       {actionError ? <p className="error">{actionError}</p> : null}
 
       {formOpen ? (
-        <article className="card endpoint-form-card">
-          <h3>{editingId ? `Edit Endpoint — ${editingId}` : "New Endpoint"}</h3>
+        <article className="card endpoint-form-card config-form-card">
+          <div className="form-card-head">
+            <div>
+              <h3>{editingId ? "Edit Route" : "New Route"}</h3>
+              <p className="muted small">
+                {editingId ? `Updating ${editingId}` : "Create a routed upstream with model identity and Shield settings."}
+              </p>
+            </div>
+            <div className="panel-head-actions">
+              <span className="form-step-pill">{editingId ? "Configuration" : "Setup"}</span>
+              <button className="btn ghost small" type="button" onClick={cancelForm}>Close</button>
+            </div>
+          </div>
           <form className="endpoint-form two-col" onSubmit={onSubmit}>
             <label>
               <span>Name</span>
@@ -366,7 +411,7 @@ export function EndpointManagePage() {
                   checked={draft.isDefault}
                   onChange={(e) => setDraft((prev) => ({ ...prev, isDefault: e.target.checked }))}
                 />
-                <span>Set as default endpoint</span>
+                <span>Set as default route</span>
               </label>
               {editingId ? (
                 <label>
@@ -383,23 +428,93 @@ export function EndpointManagePage() {
             <div className="row-actions full-span align-end">
               <button className="btn ghost" type="button" onClick={cancelForm}>Cancel</button>
               <button className="btn" type="submit" disabled={saving}>
-                {saving ? "Saving..." : editingId ? "Update Endpoint" : "Create Endpoint"}
+                {saving ? "Saving..." : editingId ? "Update Route" : "Create Route"}
               </button>
             </div>
           </form>
         </article>
       ) : null}
 
+      {orderedEndpoints.length > 0 ? (
+        <div className="resource-toolbar">
+          <label className="search-control">
+            <span>Search</span>
+            <input
+              value={endpointSearch}
+              onChange={(event) => setEndpointSearch(event.target.value)}
+              placeholder="Route, URL, provider, or model"
+            />
+          </label>
+          <div className="segmented-control" aria-label="Route enabled filter">
+            <button
+              type="button"
+              className={endpointView === "all" ? "active" : ""}
+              onClick={() => setEndpointView("all")}
+            >
+              All <span>{endpointSummary.total}</span>
+            </button>
+            <button
+              type="button"
+              className={endpointView === "enabled" ? "active" : ""}
+              onClick={() => setEndpointView("enabled")}
+            >
+              Enabled <span>{endpointSummary.enabled}</span>
+            </button>
+            <button
+              type="button"
+              className={endpointView === "disabled" ? "active" : ""}
+              onClick={() => setEndpointView("disabled")}
+            >
+              Disabled <span>{endpointSummary.disabled}</span>
+            </button>
+          </div>
+          <label className="toolbar-select">
+            <span>Sort</span>
+            <select value={endpointSort} onChange={(event) => setEndpointSort(event.target.value as typeof endpointSort)}>
+              <option value="default">Default first</option>
+              <option value="recent">Recently seen</option>
+              <option value="name">Name</option>
+              <option value="provider">Provider</option>
+            </select>
+          </label>
+          <div className="toolbar-result-count">
+            Showing {visibleEndpoints.length} of {endpointSummary.total}
+          </div>
+          {hasActiveEndpointFilters ? (
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={() => {
+                setEndpointSearch("");
+                setEndpointView("all");
+              }}
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <article className="card flush">
         {loading && orderedEndpoints.length === 0 ? (
-          <div className="empty-state">Loading endpoints...</div>
+          <div className="loading-state loading-state-panel">Loading routes...</div>
         ) : orderedEndpoints.length === 0 ? (
           <div className="empty-state">
-            <p>No endpoints configured yet.</p>
-            <button className="btn" onClick={startCreate}>+ New Endpoint</button>
+            <p>No routes configured yet.</p>
+            <button className="btn" onClick={startCreate}>New Route</button>
+          </div>
+        ) : visibleEndpoints.length === 0 ? (
+          <div className="empty-state">
+            <p>No routes match the current filters.</p>
+            <button className="btn ghost" onClick={() => {
+              setEndpointSearch("");
+              setEndpointView("all");
+            }}>
+              Clear Filters
+            </button>
           </div>
         ) : (
-          orderedEndpoints.map((item) => (
+          visibleEndpoints.map((item) => (
             <div key={item.id} className="endpoint-list-item">
               <div className="endpoint-list-main">
                 <div className="endpoint-list-name">{item.name}</div>
@@ -457,7 +572,7 @@ export function EndpointManagePage() {
               </div>
 
               <div className="endpoint-list-actions">
-                <Link to={`/endpoints/${encodeURIComponent(item.id)}`} className="btn ghost small">View</Link>
+                <Link to={`/monitor/endpoints/${encodeURIComponent(item.id)}`} className="btn ghost small btn-drill">Monitor</Link>
                 <button className="btn ghost small" onClick={() => startEdit(item.id)}>Edit</button>
                 {!item.isDefault ? (
                   <button className="btn ghost small" onClick={() => void onSetDefault(item.id)}>Set Default</button>

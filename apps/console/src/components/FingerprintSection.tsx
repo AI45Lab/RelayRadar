@@ -59,7 +59,7 @@ function TopList({ title, rows }: { title: string; rows: Array<{ key: string; sh
 
 function WindowColumn({ title, stats }: { title: string; stats: FingerprintWindowStats }) {
   return (
-    <div className="card fingerprint-window">
+    <div className="fingerprint-window">
       <h4>{title}</h4>
       <p className="muted small">Samples: {stats.sampleSize}</p>
       <dl className="fingerprint-dl">
@@ -128,6 +128,7 @@ export function FingerprintSection({ loading, error, data, auditBusy, onRefresh,
         </div>
         <div className="row-actions">
           <button type="button" className="btn ghost" onClick={() => void onRefresh()} disabled={loading}>
+            <span className="btn-glyph" aria-hidden="true">↻</span>
             Refresh
           </button>
           <button type="button" className="btn" onClick={() => onRunAudit()} disabled={auditBusy || loading}>
