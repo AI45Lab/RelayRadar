@@ -64,6 +64,17 @@ response = client.chat.completions.create(
 > [!IMPORTANT]
 > If your SDK uses a local placeholder key (for example `api_key="your-key"`), you **must** set endpoint `passthroughAuth: false`. Otherwise, that placeholder `Authorization` header will be forwarded upstream instead of the endpoint `apiKey` or `apiKeyEnv`.
 
+## 🖥️ Desktop Beta
+
+Prefer a no-setup local app? The macOS beta packages the RelayRadar Console and local proxy into a single desktop application.
+
+| Platform | Availability |
+|---|---|
+| macOS Apple Silicon | [![Download beta](https://img.shields.io/badge/Download-beta-2563eb?style=flat-square&logo=apple&logoColor=white)](https://github.com/AI45Lab/RelayRadar/releases/download/v0.1.0-beta.1/RelayRadar-0.1.0-arm64.dmg) |
+| macOS Intel | ![Coming soon](https://img.shields.io/badge/Coming-soon-e5e7eb?style=flat-square) |
+| Windows | ![Coming soon](https://img.shields.io/badge/Coming-soon-e5e7eb?style=flat-square) |
+| Linux | ![Coming soon](https://img.shields.io/badge/Coming-soon-e5e7eb?style=flat-square) |
+
 ## ✨ Features
 
 ### 🛡️ Shield — Automatic Data Protection
